@@ -174,7 +174,7 @@ class LogisticRegression(object):
         self.b = theano.shared(value=b,  name='b',  borrow=True ) 
         
         self.p_y_given_x=T.nnet.softmax(T.dot(input,self.W)+self.b)
-
+        
         self.y_pred=T.argmax(self.p_y_given_x,axis=1)
 #params,模型的参数
         self.params=[self.W,self.b]
@@ -197,6 +197,8 @@ class LogisticRegression(object):
             return NotImplementedError()         
     def getPred(self):
         return self.y_pred
+    def getPred_p(self):
+        return self.p_y_given_x
 
         
          
@@ -566,37 +568,40 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
         inputs=[],
         outputs=params
     )
-    stroage_best_params=ret_model_params()
-    best_params=params   
-    ################
-    #   开始训练   #
-    ################
-    print ('...training '+time.strftime('%H:%M:%S'))
-    patience = 5000.0    
-    patience_increase = 2    
-    improvement_threshold = 0.995   
-                                      
-  
-    best_validation_loss = np.inf   #最好的验证集上的loss，最好即最小  
-    this_validation_loss=np.inf
-    this_cost=np.inf
-    min_cost=np.inf  
-    
-    #best_iter = 0                      #最好的迭代次数，以batch为单位。比如best_iter=10000，说明在训练完第10000个batch时，达到best_validation_loss  
-    this_cost = 100.  
-    start_time = time.clock()  
-  
-    epoch = 0  
-    done_looping = False  
-
-    
-    rd_iter=np.ones(1000,dtype='int')
-    rd_error=np.ones(1000)    
-    rd_error2=np.ones(1000)  
-    rd_index=0   
-    
+    best_params=params
     if skip_training:
-        done_looping=True;
+        done_looping=True
+    else:
+        
+        stroage_best_params=ret_model_params()       
+        ################
+        #   开始训练   #
+        ################
+        print ('...training '+time.strftime('%H:%M:%S'))
+        patience = 5000.0    
+        patience_increase = 2    
+        improvement_threshold = 0.995   
+                                          
+      
+        best_validation_loss = np.inf   #最好的验证集上的loss，最好即最小  
+        this_validation_loss=np.inf
+        this_cost=np.inf
+        min_cost=np.inf  
+        
+        #best_iter = 0                      #最好的迭代次数，以batch为单位。比如best_iter=10000，说明在训练完第10000个batch时，达到best_validation_loss  
+        this_cost = 100.  
+        start_time = time.clock()  
+      
+        epoch = 0  
+        done_looping = False  
+    
+        
+        rd_iter=np.ones(1000,dtype='int')
+        rd_error=np.ones(1000)    
+        rd_error2=np.ones(1000)  
+        rd_index=0   
+    
+    
     while(epoch<n_epochs) and (not done_looping):
         
         epoch=epoch+1
@@ -651,75 +656,51 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
                 break
     
         
-   
-    end_time=time.clock()
-    print ('train completed')
-    print (
-        'Best validation score of %f %% with test cost %f '%
-        (best_validation_loss*100.,min_cost)
-    )
-    print  ('The code of file '+\
-              os.path.split(__file__)[1]+\
-              ' ran for %.2fm' %((end_time-start_time)/60.)
-            )
+    if skip_training == False:
+        end_time=time.clock()
+        print ('train completed')
+        print (
+            'Best validation score of %f %% with test cost %f '%
+            (best_validation_loss*100.,min_cost)
+        )
+        print  ('The code of file '+\
+                  os.path.split(__file__)[1]+\
+                  ' ran for %.2fm' %((end_time-start_time)/60.)
+                )
+        
     
-    '''
-    if skip_training==False:       
-        #params=ret_model_params()
-        save_name='params.py'
-        print 'saving '+save_name
-        write_file = open(save_name, 'wb')    
-        pickle.dump(stroage_best_params, write_file, -1)    
-        write_file.close()  
-        print save_name+' saved!'
-    
+        #--------------------------------------------   
+        train_params=[
+            n_epochs,learning_rate,sizebatch,nkerns,sizekerns
+        ]    
+        params_filename=str(train_params)+'_params.py'
+        mywrite(stroage_best_params,params_filename)
+        print ('saving '+params_filename)
+        #------------------------------
+        best_params=params
+        all_errors=[]
+        all_cost=[]
+        myCM=np.zeros((3,3),dtype=int)
+        
+        for i in xrange(n_valid_batches):
+            errors,cost,y_pred,y=analyse_model(i)
+            all_errors.append(errors)
+            all_cost.append(cost)
+            myCM+=confusion_matrix(y,y_pred)
+        errors=np.mean(all_errors)
+        cost=np.mean(all_cost)
+        #------------------------------
         rd_iter=rd_iter[1:rd_index]
         rd_error=rd_error[1:rd_index]*100.0
         rd_error2=rd_error2[1:rd_index]*100.0
-        
-        
-        pl.plot(rd_iter,rd_error,label='train')
-        pl.plot(rd_iter,rd_error2,label='valid')
-            pl.title('iter-error')
-        pl.xlabel('iter')
-        pl.ylabel('error')
-        pl.legend(loc='upper right')
-        #pl.xlim(0,100)
-        #pl.ylim(0,0.8)
-        pl.show() 
-    '''
-    #--------------------------------------------   
-    train_params=[
-        n_epochs,learning_rate,sizebatch,nkerns,sizekerns
-    ]    
-    params_filename=str(train_params)+'_params.py'
-    mywrite(stroage_best_params,params_filename)
-    print ('saving '+params_filename)
-    #------------------------------
-    best_params=params
-    all_errors=[]
-    all_cost=[]
-    myCM=np.zeros((3,3),dtype=int)
-    
-    for i in xrange(n_valid_batches):
-        errors,cost,y_pred,y=analyse_model(i)
-        all_errors.append(errors)
-        all_cost.append(cost)
-        myCM+=confusion_matrix(y,y_pred)
-    errors=np.mean(all_errors)
-    cost=np.mean(all_cost)
-    #------------------------------
-    rd_iter=rd_iter[1:rd_index]
-    rd_error=rd_error[1:rd_index]*100.0
-    rd_error2=rd_error2[1:rd_index]*100.0
-    tend=[rd_index,rd_iter,rd_error,rd_error2]
-    print (rd_index)
-    output_data=[train_params,errors,cost,myCM,tend]
-    outfilename=str(train_params)+'_result.pickle'
-    mywrite(output_data,outfilename)
-    print ('saving '+outfilename)
-    del rd_iter,rd_error,rd_error2
-    #------------------------------------------- 
+        tend=[rd_index,rd_iter,rd_error,rd_error2]
+        print (rd_index)
+        output_data=[train_params,errors,cost,myCM,tend]
+        outfilename=str(train_params)+'_result.pickle'
+        mywrite(output_data,outfilename)
+        print ('saving '+outfilename)
+        del rd_iter,rd_error,rd_error2
+        #------------------------------------------- 
     
     
     if len(apply_set_namelist)==0: 
@@ -731,9 +712,10 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
     num=0
     filelist=[]
     if os.path.exists('result.csv')==True:
-		os.remove('result.csv')
+        os.remove('result.csv')
     #str_time=time.strftime('%H:%M:%S')
-    boss_df=pd.DataFrame()
+    #boss_df=pd.DataFrame()
+    join_prediction=np.array()
     ireset=True
     for apply_set_name in apply_set_namelist:
         EOF=False
@@ -741,7 +723,7 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
         while(ireset!=True):
             ireset=True
         while EOF==False:  
-            print 'read img...'
+            print ('read img...')
             apply_data,apply_data2,filelist,filenames,EOF=load_apply_data(apply_set_name,reset=ireset)
             ireset=False
             if len(filenames)==0:
@@ -758,76 +740,73 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
             apply_model=theano.function(
                 on_unused_input='ignore',
                 inputs=[index],
-                outputs=LR.getPred(),
+                outputs=LR.getPred_p(),
                 givens={
                     hist:apply_data2[index * sizebatch: (index + 1) * sizebatch],
                     x:   apply_data [index * sizebatch: (index + 1) * sizebatch], 
                     is_train:np.cast['int32'](0)
                     }
             )
-            print 'apply .....'    
-            prediction=np.zeros(len(filelist))
+            print ('apply .....' )   
+            prediction=np.zeros((len(filelist),len(LR.b)))
         
             for minibatch_index in xrange(n_apply_batches):
                 pred=apply_model(minibatch_index)
                 prediction[minibatch_index*sizebatch:(minibatch_index+1)*sizebatch]=pred
                 #print '%d / %d \r'%((minibatch_index+1)*sizebatch,n_apply_batches),
                 
-            print 'apply_size:',apply_size,' sum:',
+            
             apply_set_type=np.ones(len(prediction),dtype=int)*int(apply_set_name)
-            df=pd.DataFrame([apply_set_type,prediction,filenames,filelist])
-            df=df.T
-            boss_df=boss_df.append(df)
+            np.append(join_prediction,prediction)
+            
+            #df=pd.DataFrame([apply_set_type,prediction,filenames,filelist])
+            #df=df.T
+            #boss_df=boss_df.append(df)
             num=num+apply_size
-            print num
+            print (('apply_size: %d sum : %d')%(apply_size,sum) )     
     
-    with open('result.csv','w') as output:               
-        boss_df.to_csv(output,index=False)
+    pred_filename=str([train_params,errors,cost,myCM,tend])+'_predicting.pickle'
+    mywrite(join_prediction,pred_filename)
+    #with open('result.csv','wb') as output:
+    #    boss_df.to_csv(output,index=False)
                 
     end_time=time.clock()
     print ( 'ran for %.2fm ' %((end_time-start_time)/60.))
-
-    print 'forecast finished'   
+    print ('forecasting finished')   
 
        
 
-def LENET(n_epochs,learning_rate,sizebatch,nkerns,sizekerns):
+def LENET_pred(n_epochs,learning_rate,sizebatch,nkerns,sizekerns):
+    #the filename of params is accroding to the rule as follow
+    train_params=[
+            n_epochs,learning_rate,sizebatch,nkerns,sizekerns
+    ]      
+    parameter_filename=str(train_params)+'_params.py'
+    #I will give you trained parameters so I will skip the training process
+    skip_training=Ture 
     
-    skip_training=False#####测试用Ture，记得改回False！！！！！！！！！！
-    
-    #加载数据
-    Num=10
-    exist_params,params=load_params('params.py')
-    
-    train_name='train_'+str(MR.IMAGE_SIZE)+'.csv'
-       
-    if skip_training==False:                  
-        #train_name=raw_input('input filename of train set:')
-        print 'loading',train_name
-        if os.path.exists(train_name)==False:
-            raw_input('cannot find file,over!')
-            sys.exit(1)
-        train_csv=pd.read_csv(train_name)
-        train_data=train_csv.values
-    else:
-        datasets=load_train_data(None,True,0,0) 
-        Num=0
-    for i in range(Num):#Num
-        datasets=load_train_data(train_data,skip_training,Num,i) #获取交叉验证的数据集 
-         
-        evaluate_lenet(
-                datasets,params,False,[],
-                n_epochs=n_epochs,
-                learning_rate=learning_rate,
-                sizebatch=sizebatch,
+    exist_params,params=load_params(parameter_filename)
+    if exist_params == False:
+        print("fail to load parameter_filename")
+        return
+
+    #I will create a vlid dataset but meanless because dataset is indispensable for the procedure of function 
+    datasets=load_train_data(None,True,0,0) 
+    '''
+        ['0','1','2'] refer to the name-list of picutre that will be predicted by the model
+        nkerns and sizekerns is so important for the process of model 
+    that the improper training-params will terminate the predicting process immediately  
+        the another params of this function is vaild but meanless 
+    '''
+    evaluate_lenet(
+                datasets,params,skip_training,['0','1','2'],
+                n_epochs=0,
+                learning_rate=None,
+                sizebatch=1,
                 nkerns=nkerns,
                 sizekerns=sizekerns
-        )
-        
-        #exist_params,params=load_params('params.py')  
-    #evaluate_lenet(datasets,params,True,['0','1','2'],n_epochs=0,sizebatch=1)
-
-    print 'Program finished'
+    )
+    print("predicting process is over")
     
 class myIteration():
     def __init__(self,contents):
@@ -880,7 +859,7 @@ if __name__=='__main__':
         sizebatch=v[0]
         sizekerns=v[1]
         
-        LENET(n_epochs,learning_rate,sizebatch,nkerns,sizekerns)        
+        LENET_pred(n_epochs,learning_rate,sizebatch,nkerns,sizekerns)        
         myiter.inc()
         
     print '....................Program finished...........................'
