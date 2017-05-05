@@ -6,8 +6,8 @@ Created on Sun May 15 16:34:00 2016
 """
 # encoding=utf-8
 import sys
-reload(sys)
-sys.setdefaultencoding('utf8')
+#reload(sys)
+#sys.setdefaultencoding('utf8')
 
 
 import cPickle as pickle
@@ -371,7 +371,7 @@ def giveme_sizeMap(filter_size,image_size,pooling_size=2):
 from read_and_write import mywrite 
 #===========================LeNet-5 demo================================
 def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
-                    sizekerns,nkerns,sizebatch,learning_rate,n_epochs):#500
+                    sizekerns,nkerns,sizebatch,learning_rate,n_epochs,isSaveParam=False):#500
     '''
     n_epochs训练步数，每一次都会遍历所有batch，  即所有样本
     sizebatch这里设置500,每遍历500个样本，才计算梯度
@@ -689,12 +689,17 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
         pl.show() 
     '''
     #--------------------------------------------   
+    '''
     train_params=[
         n_epochs,learning_rate,sizebatch,nkerns,sizekerns
     ]    
-    #params_filename=str(train_params)+'_params.py'
-    #mywrite(stroage_best_params,params_filename)
-    #print ('saving '+params_filename)
+    '''
+    train_params=[
+        sizekerns,nkerns,sizebatch,learning_rate,n_epochs
+    ]
+    params_filename='data\\'+str(train_params)+'_params.py'
+    mywrite(stroage_best_params,params_filename)
+    print ('saving '+params_filename)
     #------------------------------
     best_params=params
     all_errors=[]
@@ -714,11 +719,19 @@ def evaluate_lenet(datasets,params,skip_training,apply_set_namelist,
     rd_error2=rd_error2[1:rd_index]*100.0
     tend=[rd_index,rd_iter,rd_error,rd_error2]
     print (rd_index)
-    output_data=[train_params,errors,cost,myCM,tend]
-    outfilename='data\\'+str(train_params)+'_result.pickle'
-    mywrite(output_data,outfilename)
-    print ('saving '+outfilename)
+    if isSaveParam:
+        output_data=[train_params,errors,cost,myCM,tend]
+        outfilename='data\\'+str(train_params)+'_result.pickle'
+        mywrite(output_data,outfilename)
+        print ('saving '+outfilename)
     del rd_iter,rd_error,rd_error2
+    del all_errors,all_cost
+    '''
+    train_set_x, train_set_x2,train_set_y = datasets[0]  
+    valid_set_x, valid_set_x2,valid_set_y = datasets[1] 
+    '''
+    del train_set_x, train_set_x2,train_set_y
+    del valid_set_x, valid_set_x2,valid_set_y
     #------------------------------------------- 
     
     
@@ -809,15 +822,18 @@ def LENET(sizekerns,nkerns,sizebatch,learning_rate,n_epochs,skip_training=False)
     else:
         datasets=load_train_data(None,True,0,0) 
         Num=0
-	
+    rand_num=np.random.randint(0,Num)
+    rand_num=1 #----------------test!!!!!!!!!!!!!!!!
     for i in range(Num):#Num
         datasets=load_train_data(train_data,skip_training,Num,i) #获取交叉验证的数据集 
-         
+        flag= False if (rand_num!=i) else True
         evaluate_lenet(
                 datasets,params,False,[],
-				sizekerns,nkerns,sizebatch,learning_rate,n_epochs
+				sizekerns,nkerns,sizebatch,learning_rate,n_epochs,
+                isSaveParam = flag
         )
-        
+        if i==2:
+            break#---------------test!!!!!!!!!!!!!!!!!!
         #exist_params,params=load_params('params.py')  
     #evaluate_lenet(datasets,params,True,['0','1','2'],n_epochs=0,sizebatch=1)
 
@@ -862,10 +878,10 @@ if __name__=='__main__':
     [3,5,7],[3,3,4],[5,4,3],[7,5,4],[9,6,5]
     ]
     nkerns=[20,40,60]
-    sizebatch_list=[40,50,60,70,80]
-    learning_rate_list=[0.0008,0.0007,0.0006,0.0005,0.0004]
-    n_epochs_list=[65] #[5,10,30,50,70]
-    contents=[sizekerns_list,sizebatch_list,learning_rate_list,n_epochs_list]
+    sizebatch_list=[40,60,80]
+    learning_rate_list=[0.0008,0.0006,0.0004]
+    n_epochs=65 #[5,10,30,50,70]
+    contents=[sizekerns_list,sizebatch_list,learning_rate_list]
     myiter=myIteration(contents)
     
     print '....................program begining .............................'
@@ -876,18 +892,21 @@ if __name__=='__main__':
         learning_rate=v[2]
         
          ##just for test20170418!!!!!!!!!!!!!!!!!!!
-        n_epochs=1#v[3]
+        n_epochs=1#v[3]  #-------------test!!!!!!!!!!!
         
-        
+        v.insert(1,nkerns)
+        v.append(n_epochs)
+        #print v #-------------test!!!!!!!!!!!
         #------------------20170410-------------
         #这是保存的顺序，与v不一致。当时写错了
-        vv=[n_epochs,learning_rate,sizebatch,nkerns,sizekerns]
-        outfilename='data\\'+str(vv)+'_result.pickle'
+        
+        #vv=[n_epochs,learning_rate,sizebatch,nkerns,sizekerns]
+        outfilename='data\\'+str(v)+'_result.pickle'
         if os.path.exists(outfilename)==True:
-            print vv,' existed'
+            print v,' existed'
     #---------------------------------------
         else:
-            print("start:",vv)
+            print("start:",v)
             LENET(sizekerns,nkerns,sizebatch,learning_rate,n_epochs)        
         myiter.inc()
         

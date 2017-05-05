@@ -5,14 +5,14 @@ Created on Sun May 15 16:34:00 2016
 @author: Administrator
 """
 # encoding=utf-8
-import sys
+#import sys
 #reload(sys)
 #sys.setdefaultencoding('utf8')
 
 
 import cPickle as pickle
 import pandas as pd
-import pylab as pl
+#import pylab as pl
 import os
 import time
 

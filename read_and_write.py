@@ -8,23 +8,37 @@ Created on Wed Apr 05 17:09:52 2017
 import cPickle as pickle
 import numpy as np
 import os
-import pylab as pl
+import matplotlib.pyplot as plt
 from pandas import Series,DataFrame
-def mydraw(rd_iter,rd_error,rd_error2):
-    pl.plot(rd_iter,rd_error,label='train')
-    pl.plot(rd_iter,rd_error2,label='valid')
-    pl.title('iter-error')
-    pl.xlabel('iter')
-    pl.ylabel('error')
-    pl.legend(loc='upper right')
-    #pl.xlim(0,100)
-    #pl.ylim(0,0.8)
-    pl.show() 
-    
+def draw_tend(rd_iter,rd_error,rd_error2,pName):
+
+    plt.plot(rd_iter,rd_error, color='blue', label='train(%)')
+    plt.plot(rd_iter,rd_error2, color='darkorange', label='test(%)')
+    plt.xlabel('Iters')
+    plt.ylabel('Error')
+    plt.title('Iters-Error-'+pName)
+    plt.legend(loc="lower right")
+    plt.show()
+def get_tend_mean(dataframe):
+    num,rd_iter,rd_error,rd_error2=dataframe[0]
+    rd_iter=np.array(rd_iter)
+    rd_error=np.array(rd_error)
+    rd_error2=np.array(rd_error2)
+    length=len(dataframe)
+    for tend in dataframe[1:]:
+        num,rd_iter,rd_error,rd_error2=tend
+        rd_error+=np.array(rd_error)
+        rd_error2+=np.array(rd_error2)
+        #print(rd_iter,rd_error,rd_error2)
+    rd_error=rd_error/length
+    rd_error2=rd_error2/length
+    #print(rd_iter,rd_error,rd_error2)
+    #------------------------------------notice-------------20170429
+    return (rd_iter[5:],rd_error[5:],rd_error2[5:])
 def mywrite(data,filename):
     with open(filename,'a+b') as f:
         pickle.dump(data,f)
-def myread(filename):
+def myread(filename,showpic=False):
     columns=('params','error', 'loss', 'confusion_matrix','tend')
     df=DataFrame(columns=columns)
     error,loss,params=(None,None,None)
@@ -38,10 +52,20 @@ def myread(filename):
             df=df.append(s,ignore_index=True)
         #---------------------20170418-------------------
         #every file only have 10 itmes so len(df) == 1 
-        for i in range(len(df)/10):
-            params=df['params'][i]
-            error=np.mean(df['error'][i:(i+1)*10])
-            loss=np.mean(df['loss'][i:(i+1)*10])
+
+        
+        #for i in range(len(df)/10):
+        params=df['params'][0]
+        error=np.mean(df['error'])
+        loss=np.mean(df['loss'])
+        if showpic:
+            print(params)
+            print(("error:%f loss:%f")%(error,loss))
+            print(df['confusion_matrix'][0])
+            rd_iter,rd_error,rd_error2=get_tend_mean(df['tend'])
+            draw_tend(rd_iter,rd_error,rd_error2,str(params))  #--test!!!
+            
+            #mydraw(rd_iter,rd_error,rd_error2)
             #print("params ",params)
             #print(("error:%f loss:%f")%(error,loss))
     
@@ -101,13 +125,14 @@ filename='[1, (0.0005,), 40, [20, 40, 60], [5, 4, 3]]_result.pickle'
 
 if __name__=='__main__':
     sizekerns_list=[
-    [3,5,7],[3,3,4],[5,4,3],[7,5,4],[9,6,5]
+    [7,5,4]
     ]
+    #[3,5,7],[3,3,4],[5,4,3],
     nkerns=[20,40,60]
-    sizebatch_list=[40,50,60,70]
-    learning_rate_list=[0.0008,0.0007,0.0006,0.0005,0.0004]
-    n_epochs_list=[65]
-    contents=[sizekerns_list,sizebatch_list,learning_rate_list,n_epochs_list]
+    sizebatch_list=[40,45,55,70,85]#,
+    learning_rate_list=[0.001,]#0.0004,0.0005,0.0007,
+    n_epochs=65 #------------test!!!!!!!!!
+    contents=[sizekerns_list,sizebatch_list,learning_rate_list]
     myiter=myIteration(contents)
     
     print '....................program begining .............................'
@@ -119,29 +144,35 @@ if __name__=='__main__':
         sizekerns=v[0]
         sizebatch=v[1]       
         learning_rate=v[2]
-        n_epochs=v[3]
-        #------------------20170410-------------
-        #这是保存的顺序，与v不一致。当时写错了
-        vv=[n_epochs,learning_rate,sizebatch,nkerns,sizekerns]
-        #---------------------------------------
-        filename='data\\'+str(vv)+'_result.pickle'
+        v.insert(1,nkerns)
+        v.append(n_epochs)
+        v=[[3, 3, 4], [20, 40, 60], 40, 0.001, 65]#test!
+        filename='data/'+str(v)+'_result.pickle'
         if os.path.exists(filename)==False:
-            print(str(vv)," no exist")
+            print(filename," no exist")
             count+=1
-        '''
         else:    
             r=myread(filename)
+            
             if r[0]==None:
                 print(filename," error")
             else:
                 s=Series(r,index=columns)
                 df=df.append(s,ignore_index=True)
-        '''
+        
         #---------------------------------------
         myiter.inc()
+        break#test!
+
     print("count=%d"%(count))
     result=None
     if (df.size!=0):
-        result=df.sort_index(by=['error','loss'])
+        result=df.sort_values(by=['error','loss'])
+        print('top 5')
+        for i in range(1):#teset!
+            v=result['params'][i]
+            filename='data/'+str(v)+'_result.pickle'
+            myread(filename,True)
         print(result)
         result.to_csv("sorted_result.csv")
+

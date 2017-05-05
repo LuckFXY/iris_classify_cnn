@@ -114,7 +114,7 @@ def scan_folder(file_dir,file_type=None):
 
     
 def ConvToCsv(folder_name,img_label,file_type=None):
-    folder_name=os.getcwd()+'\\'+folder_name
+    folder_name=os.getcwd()+'/'+folder_name
     filelist,filenames=scan_folder(folder_name,file_type)
     num=len(filelist)
     n=1
@@ -166,12 +166,12 @@ def GenerateSet(folder_list,data_types,out_name):
 if __name__=='__main__':
     
     #FL=['0people-interval','1people-smalleye','2people-verygood','3lion']
-    FL=["people0","people1","lions2"]
+    FL=['0','1','2']
     #FL=["w0","w1","w2"]
     #for i in range(len(FL)-1):
     #    L=[ FL[i],FL[-1] ]
     sym=[0,1,2]
     #outname=str(i)+'train.csv'
-    outname='train_'+str(IMAGE_SIZE)+'.csv'
+    outname='test_'+str(IMAGE_SIZE)+'.csv'
     GenerateSet(FL,sym,outname)
     print 'program over'
